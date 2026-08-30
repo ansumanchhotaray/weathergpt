@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WeatherGPT - Disaster Portal & Global Emergency Monitor</title>
+  
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* Scoped Styles for Disaster Portal */
+    .disaster-left-panel {
+      flex: 0 0 48%;
+      max-width: 50%;
+      height: 100%;
+      background-color: var(--bg-peach-grid);
+      background-image: 
+        linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+      background-size: 32px 32px;
+      border-right: 1px solid var(--border-sep);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .disaster-map-wrapper {
+      flex: 1;
+      position: relative;
+      margin: 8px 16px 10px 16px;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      min-height: 240px;
+      z-index: 1;
+    }
+
+    #disaster-map {
+      width: 100%;
+      height: 100%;
+      background: #e8e6e1;
+    }
+
+    /* Map Custom Flashing Crimson Alert Marker */
+    .pulsing-alert-marker {
+      position: relative;
+      width: 24px;
+      height: 24px;
+    }
+
+    .marker-core {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 14px;
+      height: 14px;
+      background: #dc2626;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px rgba(220, 38, 38, 0.8);
+      z-index: 2;
+    }
+
+    .marker-pulse-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(220, 38, 38, 0.4);
+      transform: translate(-50%, -50%);
+      animation: crimsonRing 1.6s infinite ease-out;
+      z-index: 1;
+    }
+
+    @keyframes crimsonRing {
+      0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+    }
+
+    /* Map Hazard Filter Pills Tray */
+    .map-filter-tray {
+      padding: 4px 16px 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .map-filter-tray::-webkit-scrollbar { display: none; }
+
+    .filter-chip {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #374151;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .filter-chip:hover { background: #ffffff; transform: translateY(-1px); }
+    .filter-chip.active {
+      background: #dc2626;
+      color: #ffffff;
+      border-color: #dc2626;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+    }
+
+    /* Bottom Telemetry Strip */
+    .disaster-telemetry-bar {
+      background-color: var(--bg-peach-grid);
+      border-top: 1px solid var(--border-sep);
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr 1.2fr;
+      padding: 12px 18px;
+      text-align: center;
+    }
+
+    /* Right Panel (Government Framework) */
+    .disaster-right-panel {
+      flex: 1;
+      height: 100%;
+      background-color: var(--bg-chat-panel);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .advisory-header-card {
+      padding: 16px 24px 12px 24px;
+      background-color: var(--bg-chat-panel);
+      border-bottom: 1px solid #f1f3f5;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .advisory-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .advisory-main-heading h2 {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .advisory-main-heading p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .critical-alert-tag {
+      background: #fef2f2;
+      border: 1px solid #f87171;
+      color: #b91c1c;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(220, 38, 38, 0.15);
+    }
+
+    /* Incident Selector Pill Track */
+    .incident-quick-bar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-top: 4px;
+    }
+    .incident-quick-bar::-webkit-scrollbar { display: none; }
+
+    .incident-pill {
+      background: var(--hotkey-track-bg);
+      border: none;
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      color: #374151;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .incident-pill:hover { background: rgba(255, 255, 255, 0.8); }
+    .incident-pill.active {
+      background: #dc2626;
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
+    }
+
+    /* Scrollable Advisory Protocol Body */
+    .advisory-body-stream {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+
+    .advisory-body-stream::-webkit-scrollbar { width: 5px; }
+    .advisory-body-stream::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+
+    /* Advisory Section Cards */
+    .protocol-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .protocol-card-header {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .protocol-card-header svg {
+      color: #dc2626;
+    }
+
+    .directive-bullet-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .directive-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: #374151;
+    }
+
+    .directive-bullet {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #dc2626;
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    .action-notice-box {
+      background: #f0fdf4;
+      border-left: 4px solid #16a34a;
+      border-radius: 0 10px 10px 0;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #15803d;
+    }
+
+    .critical-alert-box {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      border-radius: 0 10px 10px 0;
+      padding: 12px 16px;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: #991b1b;
+    }
+
+    /* Shelters & Hotlines Grid */
+    .shelter-hotline-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .sub-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sub-card-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .hotline-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+    .hotline-row:last-child { border-bottom: none; }
+
+    .hotline-name { color: #4b5563; }
+    .hotline-num {
+      font-weight: 700;
+      color: #dc2626;
+      font-family: monospace;
+      font-size: 0.9rem;
+      background: rgba(220, 38, 38, 0.08);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .shelter-item {
+      font-size: 0.8rem;
+      line-height: 1.45;
+      color: #374151;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+    .shelter-item:last-child { border-bottom: none; }
+
+    .shelter-tag {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #16a34a;
+      background: #dcfce7;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-left: 4px;
+    }
+
+    @media (max-width: 899px) {
+      .disaster-left-panel {
+        flex: 0 0 auto;
+        max-width: 100%;
+        height: 300px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-sep);
+      }
+      .shelter-hotline-grid {
+        grid-template-columns: 1fr;
+      }
+      .disaster-telemetry-bar {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Full-Bleed Landscape Application Viewport -->
+  <div class="app-landscape-viewport">
+    
+    <!-- LEFT PANEL: Global Disaster Tracking Map & Sensor Telemetry -->
+    <aside class="disaster-left-panel" id="disaster-left-panel">
+      
+      <!-- Top Navigation & Badge Row -->
+      <div class="hero-top-bar">
+        <div class="hero-badges-group">
+          <div class="atmospheric-badge" style="border-left: 3px solid #dc2626;">
+            🚨 Disaster Portal & Live Emergency Hub
+          </div>
+          <a href="index.html" class="nav-climate-link" title="Return to WeatherGPT Home">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            WeatherGPT Home
+          </a>
+          <a href="climate-rating.html" class="nav-climate-link" title="Open Climate Rating System">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            Climate Rater
+          </a>
+        </div>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div class="map-filter-tray">
+        <button class="filter-chip active" data-cat="all">⚡ All Incidents (<span id="total-incident-count">8</span>)</button>
+        <button class="filter-chip" data-cat="floods">🌊 Flash Floods (3)</button>
+        <button class="filter-chip" data-cat="cyclones">🌀 Storms/Cyclones (2)</button>
+        <button class="filter-chip" data-cat="seismic">🌋 Earthquakes (2)</button>
+        <button class="filter-chip" data-cat="wildfires">🔥 Wildfires (1)</button>
+      </div>
+
+      <!-- Leaflet Map Container -->
+      <div class="disaster-map-wrapper">
+        <div id="disaster-map"></div>
+      </div>
+
+      <!-- Telemetry Status Bar -->
+      <div class="disaster-telemetry-bar">
+        <div class="telemetry-col">
+          <span class="telemetry-label">Active Focus</span>
+          <span class="telemetry-value" id="disp-focus-loc" style="color: #dc2626;">Nepal (Rasuwa/Nuwakot)</span>
+        </div>
+        <div class="telemetry-col">
+          <span class="telemetry-label">River Gauge</span>
+          <span class="telemetry-value" id="disp-river-gauge">7.8m (Critical)</span>
+        </div>
+        <div class="telemetry-col">
+          <span class="telemetry-label">Hydrological Risk</span>
+          <span class="telemetry-value" id="disp-alert-level">Level 4 Red</span>
+        </div>
+        <div class="telemetry-col">
+          <span class="telemetry-label">Military Rescue</span>
+          <span class="telemetry-value" id="disp-rescue-status" style="color: #16a34a;">Mobilized</span>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- RIGHT PANEL: National Emergency Response & Advisory Protocols -->
+    <main class="disaster-right-panel">
+      
+      <!-- Top Advisory Header Card -->
+      <div class="advisory-header-card">
+        <div class="advisory-title-row">
+          <div class="advisory-main-heading">
+            <h2>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              National Emergency Response & Advisory Protocols
+            </h2>
+            <p id="advisory-authority-label">National Disaster Risk Reduction and Management Authority (NDRRMA) • Government of Nepal</p>
+          </div>
+          <div class="critical-alert-tag" id="advisory-badge">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #dc2626; animation: crimsonRing 1.4s infinite;"></span>
+            CRITICAL EMERGENCY
+          </div>
+        </div>
+
+        <!-- Quick Incident Switcher Track -->
+        <div class="incident-quick-bar" id="incident-quick-bar">
+          <button class="incident-pill active" data-id="nepal">🚨 Nepal Flood (Rasuwa/Nuwakot)</button>
+          <button class="incident-pill" data-id="remal">🌀 Cyclone Remal (Bay of Bengal)</button>
+          <button class="incident-pill" data-id="japan">🌋 Nankai Trough Seismic (Japan)</button>
+          <button class="incident-pill" data-id="california">🔥 Wildfire Complex (California)</button>
+          <button class="incident-pill" data-id="brazil">🌊 Rio Grande Flood (Brazil)</button>
+        </div>
+      </div>
+
+      <!-- Dynamic Reactive Incident Body Stream -->
+      <div class="advisory-body-stream" id="advisory-body-stream">
+        
+        <!-- Primary Emergency Incident Alert Box -->
+        <div class="critical-alert-box" id="incident-banner">
+          <strong style="font-size: 1rem; display: block; margin-bottom: 4px;" id="incident-title">
+            Glacial Lake Outburst (GLOF) & Severe Flash Flood Emergency
+          </strong>
+          <span id="incident-summary">
+            Severe hydrological surge detected along the Trishuli, Bhote Koshi, and Langtang river corridors following sudden high-altitude glacial moraine breach and torrential 142mm cloudburst.
+          </span>
+        </div>
+
+        <!-- Structural Directives & Evacuation Directives -->
+        <div class="protocol-card">
+          <div class="protocol-card-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 2 22 22 22 12 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            Mandatory Structural & Civilian Directives
+          </div>
+          <div class="directive-bullet-list" id="directives-list">
+            <div class="directive-item">
+              <span class="directive-bullet"></span>
+              <span><strong>Move immediately to higher ground</strong> (at least 30 meters above riverbed level) away from the Bhote Koshi, Trishuli, and Langtang river valleys.</span>
+            </div>
+            <div class="directive-item">
+              <span class="directive-bullet"></span>
+              <span><strong>Avoid all low-lying riverbanks</strong>, gravel quarry roads, riverside trails, and suspension footbridges subject to sudden hydraulic scouring.</span>
+            </div>
+            <div class="directive-item">
+              <span class="directive-bullet"></span>
+              <span><strong>Do not attempt vehicular crossings</strong> on flooded causeways or submerged culverts. Mudflows and debris torrents carry high kinetic force.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Government Joint Military Actions -->
+        <div class="protocol-card">
+          <div class="protocol-card-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            Government & Military Disaster Response Actions
+          </div>
+          <div class="action-notice-box" id="government-action-text">
+            Joint deployment of Nepal Army Disaster Response Brigades and Armed Police Force (APF) swift-water rescue units. Specialized high-altitude MI-17 helicopters mobilized for airborne extraction in isolated Langtang gorge settlements.
+          </div>
+        </div>
+
+        <!-- Shelters & Emergency Hotlines 2-Column Grid -->
+        <div class="shelter-hotline-grid">
+          
+          <!-- Relief Shelters & Safe Havens -->
+          <div class="sub-card">
+            <div class="sub-card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              Designated Safe-Haven Relief Camps
+            </div>
+            <div id="shelters-list">
+              <div class="shelter-item">
+                <strong>Dhunche Military Base & High School</strong> <span class="shelter-tag">Operational</span><br/>
+                <span style="font-size: 0.74rem; color: #64748b;">Capacity: 800 | Water/Food Depot | Medical Post</span>
+              </div>
+              <div class="shelter-item">
+                <strong>Bidur Municipal Sports Complex</strong> <span class="shelter-tag">Operational</span><br/>
+                <span style="font-size: 0.74rem; color: #64748b;">Capacity: 1,500 | APF Staging Post | Trauma Care</span>
+              </div>
+              <div class="shelter-item">
+                <strong>Battar Relief Logistics Depot</strong> <span class="shelter-tag">Airdrop Hub</span><br/>
+                <span style="font-size: 0.74rem; color: #64748b;">Heavy vehicle distribution & food stockpiles</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Verified Emergency Numbers -->
+          <div class="sub-card">
+            <div class="sub-card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              Verified Emergency Hotlines
+            </div>
+            <div id="hotlines-list">
+              <div class="hotline-row">
+                <span class="hotline-name">NDRRMA Disaster Center:</span>
+                <span class="hotline-num">1155</span>
+              </div>
+              <div class="hotline-row">
+                <span class="hotline-name">Nepal Police Emergency:</span>
+                <span class="hotline-num">100</span>
+              </div>
+              <div class="hotline-row">
+                <span class="hotline-name">APF Rescue Command:</span>
+                <span class="hotline-num">1114</span>
+              </div>
+              <div class="hotline-row">
+                <span class="hotline-name">Red Cross Search & Rescue:</span>
+                <span class="hotline-num">1130</span>
+              </div>
+              <div class="hotline-row">
+                <span class="hotline-name">Rasuwa District Ops:</span>
+                <span class="hotline-num">010-540199</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Disaster Portal Script -->
+  <script>
+    // Curated Incident Catalog (including Nepal primary pitch demo)
+    const INCIDENT_DATABASE = {
+      nepal: {
+        id: "nepal",
+        title: "Glacial Lake Outburst (GLOF) & Flash Flood Emergency",
+        country: "Nepal",
+        region: "Rasuwa & Nuwakot Mountain Corridor",
+        lat: 28.1250,
+        lon: 85.3050,
+        zoom: 11,
+        alertBadge: "CRITICAL LEVEL 4",
+        badgeColor: "#dc2626",
+        category: "floods",
+        authority: "National Disaster Risk Reduction and Management Authority (NDRRMA) • Government of Nepal",
+        summary: "Severe hydrological surge detected along the Trishuli, Bhote Koshi, and Langtang river corridors following sudden high-altitude glacial moraine breach and torrential 142mm cloudburst.",
+        riverGauge: "7.8m (Critical Flood Level)",
+        alertLevel: "Level 4 Red Alert",
+        rescueStatus: "Army & APF Deployed",
+        directives: [
+          "<strong>Move immediately to higher ground</strong> (at least 30 meters above riverbed level) away from the Bhote Koshi, Trishuli, and Langtang river valleys.",
+          "<strong>Avoid all low-lying riverbanks</strong>, gravel quarry roads, riverside trails, and suspension footbridges subject to sudden hydraulic scouring.",
+          "<strong>Do not attempt vehicular crossings</strong> on flooded causeways or submerged culverts. Mudflows and debris torrents carry high kinetic force."
+        ],
+        governmentAction: "Joint deployment of Nepal Army Disaster Response Brigades and Armed Police Force (APF) swift-water rescue units. Specialized high-altitude MI-17 helicopters mobilized for airborne extraction in isolated Langtang gorge settlements.",
+        shelters: [
+          { name: "Dhunche Military Base & High School", tag: "Operational", desc: "Capacity: 800 | Water/Food Depot | Medical Post" },
+          { name: "Bidur Municipal Sports Complex", tag: "Operational", desc: "Capacity: 1,500 | APF Staging Post | Trauma Care" },
+          { name: "Battar Relief Logistics Depot", tag: "Airdrop Hub", desc: "Heavy vehicle distribution & food stockpiles" }
+        ],
+        hotlines: [
+          { name: "NDRRMA Disaster Center", num: "1155" },
+          { name: "Nepal Police Emergency", num: "100" },
+          { name: "APF Rescue Command", num: "1114" },
+          { name: "Red Cross Search & Rescue", num: "1130" },
+          { name: "Rasuwa District Ops", num: "010-540199" }
+        ]
+      },
+      remal: {
+        id: "remal",
+        title: "Severe Cyclonic Storm 'Remal' Coastal Inundation",
+        country: "India & Bangladesh",
+        region: "Odisha & West Bengal Coastal Belt",
+        lat: 21.8000,
+        lon: 88.3500,
+        zoom: 8,
+        alertBadge: "RED ALERT STORM",
+        badgeColor: "#ea580c",
+        category: "cyclones",
+        authority: "National Disaster Management Authority (NDMA) • Ministry of Home Affairs, India",
+        summary: "Category 2 cyclonic storm packing 135 km/h sustained gusts generating 2.5m tidal storm surges across low-lying coastal mangrove deltas.",
+        riverGauge: "Tidal Surge 2.8m",
+        alertLevel: "Red Warning",
+        rescueStatus: "NDRF Battalions Active",
+        directives: [
+          "<strong>Mandatory coastal evacuation</strong> within 5 km of sea dikes and tidal estuaries.",
+          "<strong>Discontinue all marine fishing</strong> and secure small fishing vessels above high-water spring tide lines.",
+          "<strong>Stay clear of overhead electrical powerlines</strong> and tin-roofed temporary structures."
+        ],
+        governmentAction: "Deployment of 18 NDRF teams equipped with inflatable motorized boats, tree clearers, and satellite communication sets across coastal districts.",
+        shelters: [
+          { name: "Kakdwip Multipurpose Cyclone Shelter", tag: "Open", desc: "Capacity: 2,000 | Backup Diesel GenSets" },
+          { name: "Digha Storm Relief Center", tag: "Open", desc: "Capacity: 1,200 | Clean Water Filtration" }
+        ],
+        hotlines: [
+          { name: "National Disaster Helpline", num: "1078" },
+          { name: "State Emergency Control", num: "1070" },
+          { name: "Coast Guard Maritime SAR", num: "1554" }
+        ]
+      },
+      japan: {
+        id: "japan",
+        title: "Magnitude 7.1 Offshore Seismic Advisory",
+        country: "Japan",
+        region: "Hyuga-nada / Miyazaki Coast",
+        lat: 31.8000,
+        lon: 131.7000,
+        zoom: 8,
+        alertBadge: "TSUNAMI ADVISORY",
+        badgeColor: "#ca8a04",
+        category: "seismic",
+        authority: "Japan Meteorological Agency (JMA) & Fire and Disaster Management Agency (FDMA)",
+        summary: "Subduction zone megathrust earthquake monitoring with heightened advisory for coastal tsunami surges up to 1.0 meter.",
+        riverGauge: "Tsunami Gauge 0.8m",
+        alertLevel: "Special Caution",
+        rescueStatus: "SDF on Standby",
+        directives: [
+          "<strong>Move away from beaches and coastal estuaries</strong> immediately until tsunami advisories are cleared.",
+          "<strong>Inspect gas valves and electrical appliances</strong> for seismic line ruptures.",
+          "<strong>Keep emergency grab-and-go kits ready</strong> with radio, battery banks, and potable water."
+        ],
+        governmentAction: "Automated J-Alert satellite push notification activated; emergency response team assembled at Prime Minister's Crisis Management Center.",
+        shelters: [
+          { name: "Miyazaki Civic Gymnasium High-Ground", tag: "Standby", desc: "Seismic grade Tier-1 | Tsunami Evac Tower" }
+        ],
+        hotlines: [
+          { name: "Police Emergency", num: "110" },
+          { name: "Fire & Ambulance", num: "119" },
+          { name: "Disaster Message Dial", num: "171" }
+        ]
+      },
+      california: {
+        id: "california",
+        title: "Park Wildfire Complex - Rapid Fire Spread",
+        country: "United States",
+        region: "Butte & Tehama Counties, California",
+        lat: 39.8000,
+        lon: -121.8000,
+        zoom: 9,
+        alertBadge: "EXTREME FIRE DANGER",
+        badgeColor: "#dc2626",
+        category: "wildfires",
+        authority: "CAL FIRE & FEMA Region 9",
+        summary: "Fast-moving brush wildfire driven by 40 km/h canyon winds and extreme drought conditions, burning over 180,000 acres.",
+        riverGauge: "Humidity 12%",
+        alertLevel: "Level 3 Evacuate",
+        rescueStatus: "2,400 Firefighters",
+        directives: [
+          "<strong>Immediate mandatory evacuation</strong> for Zones 412, 415, and 420. Leave now.",
+          "<strong>Close all windows and doors</strong>, shut off propane tanks, and turn on exterior lights before departing.",
+          "<strong>Monitor local emergency radio</strong> (CAL FIRE frequency) for updated escape corridor status."
+        ],
+        governmentAction: "Full air-tanker suppression drop with DC-10 retardant aircraft; emergency Red Cross shelters activated in Chico.",
+        shelters: [
+          { name: "Silver Dollar Fairgrounds", tag: "Active", desc: "Capacity: 1,000 | Large Animal Evac Depot" }
+        ],
+        hotlines: [
+          { name: "Emergency Services", num: "911" },
+          { name: "CAL FIRE Public Info", num: "530-538-7826" },
+          { name: "FEMA Disaster Helpline", num: "1-800-621-3362" }
+        ]
+      },
+      brazil: {
+        id: "brazil",
+        title: "Rio Grande do Sul Catastrophic River Inundation",
+        country: "Brazil",
+        region: "Porto Alegre & Guaiba Basin",
+        lat: -30.0346,
+        lon: -51.2177,
+        zoom: 9,
+        alertBadge: "FLOOD CALAMITY",
+        badgeColor: "#dc2626",
+        category: "floods",
+        authority: "Defesa Civil Nacional & Governo do Rio Grande do Sul",
+        summary: "Guaiba River reached historical peak of 5.30m, inundating metropolitan districts and displacing over 400,000 citizens.",
+        riverGauge: "Guaiba 5.30m (Historic)",
+        alertLevel: "State of Calamity",
+        rescueStatus: "Armed Forces Active",
+        directives: [
+          "<strong>Evacuate inundated low-lying neighborhoods</strong> immediately by boat or official rescue transport.",
+          "<strong>Do not consume untreated tap water</strong>; rely only on boiled or bottled supplies.",
+          "<strong>Avoid flooded roads</strong> due to hidden sewer openings and dangerous submerged electrical lines."
+        ],
+        governmentAction: "National Armed Forces hospital ship mobilized along with amphibious transport vehicles and emergency water filtration plants.",
+        shelters: [
+          { name: "Gremio Arena Relief Haven", tag: "Operational", desc: "Capacity: 3,500 | Field Hospital" }
+        ],
+        hotlines: [
+          { name: "Civil Defense", num: "199" },
+          { name: "Military Police", num: "190" },
+          { name: "Fire Department Rescue", num: "193" }
+        ]
+      }
+    };
+
+    let map = null;
+    let markersLayer = null;
+    let activeMarker = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      initUIEvents();
+      // Load Nepal primary pitch demo
+      selectIncident('nepal');
+      // Fetch open events from NASA EONET
+      fetchLiveEONETEvents();
+    });
+
+    function initMap() {
+      map = L.map('disaster-map', {
+        zoomControl: true,
+        attributionControl: false
+      }).setView([28.1250, 85.3050], 11);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18
+      }).addTo(map);
+
+      markersLayer = L.layerGroup().addTo(map);
+      renderAllIncidentPins('all');
+    }
+
+    function createPulsingMarker(isPrimary = false) {
+      return L.divIcon({
+        className: 'custom-pulsing-icon',
+        html: `
+          <div class="pulsing-alert-marker">
+            <div class="marker-pulse-ring" style="${isPrimary ? 'background: rgba(220, 38, 38, 0.6);' : ''}"></div>
+            <div class="marker-core" style="${isPrimary ? 'background: #dc2626;' : 'background: #ea580c;'}"></div>
+          </div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+    }
+
+    function renderAllIncidentPins(category = 'all') {
+      if (!markersLayer) return;
+      markersLayer.clearLayers();
+
+      Object.values(INCIDENT_DATABASE).forEach(inc => {
+        if (category !== 'all' && inc.category !== category) return;
+
+        const isNepal = inc.id === 'nepal';
+        const marker = L.marker([inc.lat, inc.lon], {
+          icon: createPulsingMarker(isNepal)
+        }).addTo(markersLayer);
+
+        marker.bindPopup(`
+          <div style="font-family: var(--font-sans); padding: 4px;">
+            <strong style="font-size: 13px; color: #dc2626;">🚨 ${inc.title}</strong><br/>
+            <span style="font-size: 11px; color: #4b5563;">${inc.region}, ${inc.country}</span><br/>
+            <button onclick="window.selectIncident('${inc.id}')" style="margin-top: 6px; background: #dc2626; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600;">
+              View Response Protocols ➤
+            </button>
+          </div>
+        `);
+
+        marker.on('click', () => {
+          selectIncident(inc.id);
+        });
+
+        if (isNepal) {
+          activeMarker = marker;
+          marker.openPopup();
+        }
+      });
+    }
+
+    function initUIEvents() {
+      // Category filter chips
+      document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          const cat = chip.getAttribute('data-cat');
+          renderAllIncidentPins(cat);
+        });
+      });
+
+      // Incident quick selector pills
+      document.getElementById('incident-quick-bar').addEventListener('click', (e) => {
+        const btn = e.target.closest('.incident-pill');
+        if (!btn) return;
+        const id = btn.getAttribute('data-id');
+        if (id) {
+          selectIncident(id);
+        }
+      });
+    }
+
+    // -------------------------------------------------------------
+    // Select Incident & Update Reactive Government Protocols Panel
+    // -------------------------------------------------------------
+    function selectIncident(incidentId) {
+      const inc = INCIDENT_DATABASE[incidentId];
+      if (!inc) return;
+
+      // Update active state in pills
+      document.querySelectorAll('.incident-pill').forEach(pill => {
+        if (pill.getAttribute('data-id') === incidentId) {
+          pill.classList.add('active');
+        } else {
+          pill.classList.remove('active');
+        }
+      });
+
+      // Fly map to coordinates
+      if (map) {
+        map.flyTo([inc.lat, inc.lon], inc.zoom, { duration: 1.2 });
+      }
+
+      // Update Telemetry Bar
+      document.getElementById('disp-focus-loc').textContent = `${inc.country} (${inc.region.split(' ')[0]})`;
+      document.getElementById('disp-river-gauge').textContent = inc.riverGauge;
+      document.getElementById('disp-alert-level').textContent = inc.alertLevel;
+      document.getElementById('disp-rescue-status').textContent = inc.rescueStatus;
+
+      // Update Right Panel Advisory
+      document.getElementById('advisory-authority-label').textContent = inc.authority;
+      document.getElementById('advisory-badge').textContent = inc.alertBadge;
+      document.getElementById('advisory-badge').style.borderColor = inc.badgeColor;
+
+      document.getElementById('incident-title').textContent = inc.title;
+      document.getElementById('incident-summary').textContent = inc.summary;
+
+      // Update Directives List
+      const dirContainer = document.getElementById('directives-list');
+      dirContainer.innerHTML = inc.directives.map(d => `
+        <div class="directive-item">
+          <span class="directive-bullet"></span>
+          <span>${d}</span>
+        </div>
+      `).join('');
+
+      // Update Government Action Box
+      document.getElementById('government-action-text').textContent = inc.governmentAction;
+
+      // Update Shelters
+      const shelterContainer = document.getElementById('shelters-list');
+      shelterContainer.innerHTML = inc.shelters.map(s => `
+        <div class="shelter-item">
+          <strong>${s.name}</strong> <span class="shelter-tag">${s.tag}</span><br/>
+          <span style="font-size: 0.74rem; color: #64748b;">${s.desc}</span>
+        </div>
+      `).join('');
+
+      // Update Hotlines
+      const hotlineContainer = document.getElementById('hotlines-list');
+      hotlineContainer.innerHTML = inc.hotlines.map(h => `
+        <div class="hotline-row">
+          <span class="hotline-name">${h.name}:</span>
+          <span class="hotline-num">${h.num}</span>
+        </div>
+      `).join('');
+    }
+
+    // Expose selectIncident for global popup calls
+    window.selectIncident = selectIncident;
+
+    // -------------------------------------------------------------
+    // Live NASA EONET / Open Event Feed Ingestion
+    // -------------------------------------------------------------
+    async function fetchLiveEONETEvents() {
+      try {
+        const url = 'https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=15';
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.events && data.events.length > 0) {
+          let count = Object.keys(INCIDENT_DATABASE).length;
+
+          data.events.forEach(evt => {
+            if (evt.geometry && evt.geometry.length > 0) {
+              const geom = evt.geometry[evt.geometry.length - 1];
+              const coords = geom.coordinates; // [lon, lat]
+              if (coords && coords.length >= 2) {
+                const lat = coords[1];
+                const lon = coords[0];
+                const catTitle = evt.categories && evt.categories[0] ? evt.categories[0].title : 'Natural Event';
+
+                const liveMarker = L.marker([lat, lon], {
+                  icon: createPulsingMarker(false)
+                }).addTo(markersLayer);
+
+                liveMarker.bindPopup(`
+                  <div style="font-family: var(--font-sans); padding: 4px;">
+                    <strong style="font-size: 13px; color: #dc2626;">🛰️ NASA EONET: ${escapeHTML(evt.title)}</strong><br/>
+                    <span style="font-size: 11px; color: #4b5563;">Category: <strong>${catTitle}</strong></span><br/>
+                    <span style="font-size: 10px; color: #6b7280;">Coordinates: ${lat.toFixed(2)}°, ${lon.toFixed(2)}°</span>
+                  </div>
+                `);
+
+                count++;
+              }
+            }
+          });
+
+          document.getElementById('total-incident-count').textContent = count;
+        }
+      } catch (err) {
+        console.warn("NASA EONET live feed optional sync:", err);
+      }
+    }
+
+    function escapeHTML(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
