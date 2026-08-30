@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WeatherGPT - Atmospheric AI</title>
+  
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Landscape Viewport Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Full-Bleed Landscape Application Viewport -->
+  <div class="app-landscape-viewport">
+    
+    <!-- LEFT PANEL: Atmospheric Status Grid & Telemetry Hero -->
+    <aside class="left-atmospheric-panel" id="left-panel">
+      
+      <!-- Top Atmospheric Badge Row -->
+      <div class="hero-top-bar">
+        <div class="atmospheric-badge">
+          WeatherGPT Atmospheric Link
+        </div>
+        <button id="hero-action-btn" class="hero-action-btn" title="Toggle Sound / Animation">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+            <polygon points="6 4 20 12 6 20 6 4"></polygon>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Minimalist Atmospheric Art Canvas -->
+      <div class="illustration-hero-area" id="illustration-area">
+        
+        <!-- Sun Artwork Element -->
+        <div class="weather-art-sun" id="art-sun">
+          <div class="sun-glow-outer"></div>
+          <div class="sun-glow-inner"></div>
+          <div class="sun-core"></div>
+          <div class="sun-rays">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <!-- Drifting Cloud Element -->
+        <div class="weather-art-cloud" id="art-cloud">
+          <div class="cloud-puff puff-1"></div>
+          <div class="cloud-puff puff-2"></div>
+          <div class="cloud-puff puff-3"></div>
+          <div class="cloud-base"></div>
+        </div>
+
+        <!-- Dynamic Precipitation Layer (Raindrops / Snowflakes) -->
+        <div class="weather-precip-layer" id="precip-layer"></div>
+
+        <!-- Fine Ambient Gold Specks -->
+        <div class="dust-specks">
+          <span class="speck s1"></span>
+          <span class="speck s2"></span>
+          <span class="speck s3"></span>
+          <span class="speck s4"></span>
+          <span class="speck s5"></span>
+          <span class="speck s6"></span>
+        </div>
+
+      </div>
+
+      <!-- Pinned 3-Column Telemetry Bar -->
+      <div class="telemetry-strip-bar">
+        <div class="telemetry-col">
+          <span class="telemetry-label">Humidity</span>
+          <span class="telemetry-value" id="telemetry-humidity">25%</span>
+        </div>
+        <div class="telemetry-col">
+          <span class="telemetry-label">Wind Vector</span>
+          <span class="telemetry-value" id="telemetry-wind">15 km/h</span>
+        </div>
+        <div class="telemetry-col">
+          <span class="telemetry-label">UV Exposure</span>
+          <span class="telemetry-value" id="telemetry-uv">Extreme</span>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- RIGHT PANEL: AI Conversation & Activity Reasoning Workspace -->
+    <main class="right-chat-panel">
+      
+      <!-- Vertically Scrolling Chat Stream -->
+      <div class="chat-scroll-stream" id="chat-messages">
+        <!-- Messages dynamically rendered here by app.js -->
+      </div>
+
+      <!-- Bottom Controls & Input Dock -->
+      <div class="bottom-dock-container">
+        
+        <!-- Suggested Hot-keys Section -->
+        <div class="hotkeys-section">
+          <div class="hotkeys-title">Suggested Hot-keys:</div>
+          <div class="hotkeys-pills-bar" id="hotkeys-bar">
+            <button class="hotkey-pill" data-city="Mumbai">Mumbai 🌧️</button>
+            <button class="hotkey-pill active" data-city="Delhi">Delhi ☀️</button>
+            <button class="hotkey-pill" data-city="Bengaluru">Bengaluru ☁️</button>
+            <button class="hotkey-pill" data-city="Chennai">Chennai 🌊</button>
+            <button class="hotkey-pill" data-city="Kolkata">Kolkata ⛈️</button>
+          </div>
+        </div>
+
+        <!-- Chat Input Row Form -->
+        <form id="chat-form" class="chat-input-row" autocomplete="off">
+          <div class="input-field-container">
+            <input 
+              type="text" 
+              id="chat-input" 
+              class="chat-input" 
+              placeholder="Ask about any city around the world..." 
+              autocomplete="off"
+              required
+            />
+            <span class="input-icon" title="Atmospheric Intelligence">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                <path d="M9 22v-4h6v4"></path>
+                <path d="M8 6h.01"></path>
+                <path d="M16 6h.01"></path>
+                <path d="M12 6h.01"></path>
+                <path d="M12 10h.01"></path>
+                <path d="M12 14h.01"></path>
+                <path d="M16 10h.01"></path>
+                <path d="M16 14h.01"></path>
+                <path d="M8 10h.01"></path>
+                <path d="M8 14h.01"></path>
+              </svg>
+            </span>
+          </div>
+          <button type="submit" id="send-btn" class="send-action-btn">
+            Send ➤
+          </button>
+        </form>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="weatherData.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
