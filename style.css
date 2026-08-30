@@ -98,6 +98,13 @@ html, body {
   z-index: 10;
 }
 
+.hero-badges-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .atmospheric-badge {
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -108,6 +115,31 @@ html, body {
   color: #1f2937;
   letter-spacing: -0.01em;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.nav-climate-link {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: -0.01em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.nav-climate-link:hover {
+  background: #ffffff;
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.12);
 }
 
 .hero-action-btn {

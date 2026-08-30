@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WeatherGPT - Climate & Air Quality Rater</title>
+  
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* Scoped Styles for Climate Rating System */
+    .climate-left-panel {
+      flex: 0 0 46%;
+      max-width: 48%;
+      height: 100%;
+      background-color: var(--bg-peach-grid);
+      background-image: 
+        linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+      background-size: 32px 32px;
+      border-right: 1px solid var(--border-sep);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-container-box {
+      flex: 1;
+      position: relative;
+      margin: 10px 16px;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      min-height: 220px;
+      z-index: 1;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #e5e3df;
+    }
+
+    .score-badge-card {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid var(--border-sep);
+      border-radius: 16px;
+      margin: 0 16px 12px 16px;
+      padding: 14px 18px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .score-circle-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .score-number-pill {
+      font-family: var(--font-display);
+      font-size: 1.85rem;
+      font-weight: 800;
+      padding: 6px 16px;
+      border-radius: 14px;
+      color: #ffffff;
+      background: #22c55e;
+      box-shadow: 0 4px 14px rgba(34, 197, 94, 0.3);
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
+    }
+
+    .score-scale {
+      font-size: 1rem;
+      font-weight: 600;
+      opacity: 0.8;
+    }
+
+    .score-meta-text h3 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .score-meta-text p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .score-meter-bar {
+      width: 120px;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .score-meter-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: #22c55e;
+      width: 80%;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s ease;
+    }
+
+    /* Right Panel Climate Workspace */
+    .climate-right-panel {
+      flex: 1;
+      height: 100%;
+      background-color: var(--bg-chat-panel);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .climate-search-header {
+      padding: 18px 24px 14px 24px;
+      background-color: var(--bg-chat-panel);
+      border-bottom: 1px solid #f1f3f5;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .climate-search-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-input-box {
+      flex: 1;
+      background-color: var(--input-bg);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      padding: 11px 16px;
+      transition: box-shadow 0.2s, background-color 0.2s;
+    }
+
+    .search-input-box:focus-within {
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+      background-color: #e2e6ec;
+    }
+
+    .search-input-box input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    .rate-btn {
+      background-color: var(--user-bubble-bg);
+      color: #ffffff;
+      border: none;
+      border-radius: 14px;
+      padding: 11px 22px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+    }
+
+    .rate-btn:hover {
+      background-color: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    /* Environmental Analysis Scrollable Stream */
+    .climate-analysis-stream {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .analysis-summary-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .summary-headline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .summary-tag {
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .tag-clean { background: rgba(34, 197, 94, 0.15); color: #15803d; }
+    .tag-moderate { background: rgba(234, 179, 8, 0.15); color: #a16207; }
+    .tag-unhealthy { background: rgba(249, 115, 22, 0.15); color: #c2410c; }
+    .tag-hazardous { background: rgba(239, 68, 68, 0.15); color: #b91c1c; }
+
+    .summary-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .summary-text {
+      font-size: 0.92rem;
+      line-height: 1.6;
+      color: #374151;
+    }
+
+    /* 4-Factor Breakdown Grid */
+    .factors-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .factor-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .factor-header {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .factor-header svg {
+      color: var(--user-bubble-bg);
+    }
+
+    .factor-desc {
+      font-size: 0.84rem;
+      line-height: 1.5;
+      color: #4b5563;
+    }
+
+    .factor-value {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-top: 2px;
+    }
+
+    /* Health & Recommendations Banner */
+    .health-advice-card {
+      background: #f0fdf4;
+      border-left: 4px solid #22c55e;
+      border-radius: 0 14px 14px 0;
+      padding: 14px 18px;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: #166534;
+    }
+
+    .health-advice-card.warning {
+      background: #fffbeb;
+      border-left-color: #f59e0b;
+      color: #92400e;
+    }
+
+    .health-advice-card.danger {
+      background: #fef2f2;
+      border-left-color: #ef4444;
+      color: #991b1b;
+    }
+
+    @media (max-width: 899px) {
+      .climate-left-panel {
+        flex: 0 0 auto;
+        max-width: 100%;
+        height: 320px;
+      }
+      .factors-grid {
+        grid-template-columns: 1fr;
+      }
+      .score-badge-card {
+        margin: 0 12px 8px 12px;
+        padding: 10px 14px;
+      }
+      .score-number-pill {
+        font-size: 1.4rem;
+        padding: 4px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Full-Bleed Landscape Application Viewport -->
+  <div class="app-landscape-viewport">
+    
+    <!-- LEFT PANEL: Interactive Map & Prominent Climate Score -->
+    <aside class="climate-left-panel" id="climate-left-panel">
+      
+      <!-- Top Navigation & Badge Row -->
+      <div class="hero-top-bar">
+        <div class="hero-badges-group">
+          <div class="atmospheric-badge">
+            Climate & Air Quality Rater
+          </div>
+          <a href="index.html" class="nav-climate-link" title="Return to WeatherGPT Home">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            WeatherGPT Home
+          </a>
+        </div>
+      </div>
+
+      <!-- Live Interactive Leaflet.js Map -->
+      <div class="map-container-box">
+        <div id="map"></div>
+      </div>
+
+      <!-- Prominent Climate Score Card out of 10 -->
+      <div class="score-badge-card">
+        <div class="score-circle-badge">
+          <div class="score-number-pill" id="score-pill">
+            <span id="score-num">5</span><span class="score-scale">/10</span>
+          </div>
+          <div class="score-meta-text">
+            <h3 id="score-place-name">New Delhi</h3>
+            <p id="score-verdict-label">Moderate Industrial & Vehicular Load</p>
+          </div>
+        </div>
+
+        <div class="score-meter-bar">
+          <div class="score-meter-fill" id="score-meter-fill" style="width: 50%;"></div>
+        </div>
+      </div>
+
+      <!-- 4-Column Live Pollutant Telemetry Bar -->
+      <div class="telemetry-strip-bar">
+        <div class="telemetry-col">
+          <span class="telemetry-label">PM2.5 Particulates</span>
+          <span class="telemetry-value" id="val-pm25">-- µg/m³</span>
+        </div>
+        <div class="telemetry-col">
+          <span class="telemetry-label">PM10 Coarse</span>
+          <span class="telemetry-value" id="val-pm10">-- µg/m³</span>
+        </div>
+        <div class="telemetry-col">
+          <span class="telemetry-label">Nitrogen Dioxide (NO₂)</span>
+          <span class="telemetry-value" id="val-no2">-- µg/m³</span>
+        </div>
+        <div class="telemetry-col">
+          <span class="telemetry-label">US Air Quality (AQI)</span>
+          <span class="telemetry-value" id="val-aqi">--</span>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- RIGHT PANEL: Search Box & Dynamic Environmental Analysis Summary -->
+    <main class="climate-right-panel">
+      
+      <!-- Search Box & Suggested Pills Header -->
+      <div class="climate-search-header">
+        <form id="climate-search-form" class="climate-search-row" autocomplete="off">
+          <div class="search-input-box">
+            <input 
+              type="text" 
+              id="city-search-input" 
+              placeholder="Enter city name (e.g. Zurich, Tokyo, Delhi, Los Angeles, Reykjavik, London)..." 
+              autocomplete="off"
+              required
+            />
+          </div>
+          <button type="submit" id="rate-submit-btn" class="rate-btn">
+            Rate Climate ➤
+          </button>
+        </form>
+
+        <!-- Suggested Hot-keys Section -->
+        <div class="hotkeys-section">
+          <div class="hotkeys-title">Global Climate Spotlights:</div>
+          <div class="hotkeys-pills-bar" id="climate-hotkeys-bar">
+            <button class="hotkey-pill active" data-city="New Delhi">Delhi 🏭</button>
+            <button class="hotkey-pill" data-city="Zurich">Zurich 🌲</button>
+            <button class="hotkey-pill" data-city="Tokyo">Tokyo 🗼</button>
+            <button class="hotkey-pill" data-city="Los Angeles">Los Angeles 🚗</button>
+            <button class="hotkey-pill" data-city="Reykjavik">Reykjavik 🏔️</button>
+            <button class="hotkey-pill" data-city="Mumbai">Mumbai 🌊</button>
+            <button class="hotkey-pill" data-city="London">London 🌧️</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed Environmental Analysis Stream -->
+      <div class="climate-analysis-stream" id="analysis-stream">
+        
+        <!-- Large Summary Card -->
+        <div class="analysis-summary-card">
+          <div class="summary-headline">
+            <span class="summary-tag tag-moderate" id="analysis-tag">Evaluating...</span>
+            <h2 class="summary-title" id="analysis-title">Environmental Climate Rating Breakdown</h2>
+          </div>
+          <p class="summary-text" id="analysis-summary-text">
+            Fetching real-time aerosol, particulate, and industrial telemetry from Open-Meteo satellite and ground sensor arrays...
+          </p>
+
+          <!-- 4-Factor Breakdown Grid -->
+          <div class="factors-grid">
+            
+            <div class="factor-box">
+              <div class="factor-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Industrial & Energy Emissions
+              </div>
+              <p class="factor-desc" id="factor-industrial-desc">
+                Analyzing nearby power plants, manufacturing corridors, and sulfur dioxide ($SO_2$) levels.
+              </p>
+              <span class="factor-value" id="factor-industrial-val">SO₂: -- µg/m³</span>
+            </div>
+
+            <div class="factor-box">
+              <div class="factor-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                Vehicular Exhaust & Urban Traffic
+              </div>
+              <p class="factor-desc" id="factor-traffic-desc">
+                Monitoring Nitrogen Dioxide ($NO_2$) and Carbon Monoxide ($CO$) from dense vehicle congestion.
+              </p>
+              <span class="factor-value" id="factor-traffic-val">NO₂: -- µg/m³</span>
+            </div>
+
+            <div class="factor-box">
+              <div class="factor-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+                Particulate Dust & Aerosols
+              </div>
+              <p class="factor-desc" id="factor-dust-desc">
+                Measuring respirable fine $PM_{2.5}$ and mineral dust transport impacting lungs and throat.
+              </p>
+              <span class="factor-value" id="factor-dust-val">PM2.5: -- µg/m³</span>
+            </div>
+
+            <div class="factor-box">
+              <div class="factor-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/></svg>
+                Geographic & Wind Ventilation
+              </div>
+              <p class="factor-desc" id="factor-geo-desc">
+                Assessing atmospheric dispersion, coastal sea breezes, or valley inversion trapping.
+              </p>
+              <span class="factor-value" id="factor-geo-val">Ozone: -- µg/m³</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Health & Lifestyle Guidance Card -->
+        <div class="health-advice-card" id="health-advice-card">
+          <strong>🌿 Health & Outdoor Action Plan:</strong>
+          <span id="health-advice-text">
+            Evaluating health safety guidelines for children, elderly, and active outdoor runners...
+          </span>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Climate Rating Application Logic -->
+  <script>
+    // State
+    let map = null;
+    let currentMarker = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      initClimateEvents();
+      // Load initial city (New Delhi)
+      rateCityClimate('New Delhi');
+    });
+
+    function initMap() {
+      // Default to Delhi coordinates
+      map = L.map('map', {
+        zoomControl: true,
+        attributionControl: false
+      }).setView([28.6139, 77.2090], 11);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18
+      }).addTo(map);
+    }
+
+    function initClimateEvents() {
+      const form = document.getElementById('climate-search-form');
+      const input = document.getElementById('city-search-input');
+      const hotkeysBar = document.getElementById('climate-hotkeys-bar');
+
+      if (form && input) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const q = input.value.trim();
+          if (q) {
+            rateCityClimate(q);
+            input.value = '';
+          }
+        });
+      }
+
+      if (hotkeysBar) {
+        hotkeysBar.addEventListener('click', (e) => {
+          const btn = e.target.closest('.hotkey-pill');
+          if (!btn) return;
+          const city = btn.getAttribute('data-city');
+          if (city) {
+            rateCityClimate(city);
+          }
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Live Air Quality & Climate Rating Engine
+    // -------------------------------------------------------------
+    async function rateCityClimate(cityName) {
+      // Highlight hotkey
+      document.querySelectorAll('.hotkey-pill').forEach(pill => {
+        if (pill.getAttribute('data-city').toLowerCase() === cityName.toLowerCase()) {
+          pill.classList.add('active');
+        } else {
+          pill.classList.remove('active');
+        }
+      });
+
+      // 1. Geocode Place
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`;
+      
+      try {
+        const geoRes = await fetch(geoUrl);
+        const geoData = await geoRes.json();
+
+        if (!geoData.results || geoData.results.length === 0) {
+          alert(`Location "${cityName}" not found. Please try another place name.`);
+          return;
+        }
+
+        const loc = geoData.results[0];
+        const lat = loc.latitude;
+        const lon = loc.longitude;
+        const placeName = loc.name;
+        const country = loc.country || '';
+        const region = loc.admin1 || '';
+
+        // 2. Fetch Live Open-Meteo Air Quality Data
+        const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,dust,european_aqi,us_aqi&timezone=auto`;
+        const aqRes = await fetch(aqUrl);
+        const aqData = await aqRes.json();
+        const cur = aqData.current || {};
+
+        const pm25 = cur.pm2_5 || 0;
+        const pm10 = cur.pm10 || 0;
+        const no2 = cur.nitrogen_dioxide || 0;
+        const so2 = cur.sulphur_dioxide || 0;
+        const ozone = cur.ozone || 0;
+        const co = cur.carbon_monoxide || 0;
+        const dust = cur.dust || 0;
+        const usAqi = cur.us_aqi || Math.round(pm25 * 3);
+
+        // 3. Calculate 1-10 Climate Score
+        const scoreAnalysis = computeClimateScore(pm25, pm10, no2, so2, ozone, usAqi);
+
+        // 4. Update Map Location
+        updateMap(lat, lon, placeName, country, scoreAnalysis.score, usAqi);
+
+        // 5. Update UI Telemetry & Analysis Breakdown
+        renderAnalysis({
+          placeName: `${placeName}${region ? `, ${region}` : ''} (${country})`,
+          score: scoreAnalysis.score,
+          scoreClass: scoreAnalysis.badgeClass,
+          tag: scoreAnalysis.tag,
+          tagClass: scoreAnalysis.tagClass,
+          verdictTitle: scoreAnalysis.title,
+          verdictSummary: scoreAnalysis.summary,
+          pm25: pm25,
+          pm10: pm10,
+          no2: no2,
+          so2: so2,
+          ozone: ozone,
+          dust: dust,
+          usAqi: usAqi,
+          healthAdvice: scoreAnalysis.healthAdvice,
+          healthClass: scoreAnalysis.healthClass
+        });
+
+      } catch (err) {
+        console.error("Failed to rate climate:", err);
+      }
+    }
+
+    function computeClimateScore(pm25, pm10, no2, so2, ozone, aqi) {
+      let score = 10;
+
+      // Particulate deductions (PM2.5 is primary health determinant)
+      if (pm25 > 150) score -= 8.5;
+      else if (pm25 > 90) score -= 7.0;
+      else if (pm25 > 55) score -= 5.5;
+      else if (pm25 > 35) score -= 4.0;
+      else if (pm25 > 25) score -= 2.5;
+      else if (pm25 > 12) score -= 1.2;
+      else if (pm25 > 5) score -= 0.4;
+
+      // Secondary industrial gas penalties
+      if (no2 > 50) score -= 1.0;
+      if (so2 > 25) score -= 1.0;
+      if (aqi > 200) score = Math.min(score, 3);
+      else if (aqi > 150) score = Math.min(score, 4);
+
+      // Clamp between 1 and 10
+      score = Math.max(1, Math.min(10, Math.round(score)));
+
+      if (score >= 8) {
+        return {
+          score: score,
+          badgeClass: 'score-green',
+          tag: 'Pristine / Clean Air',
+          tagClass: 'tag-clean',
+          title: 'Exceptional Air Purity & Minimal Pollution',
+          summary: `Air quality is exceptionally clean with low particulate levels (${pm25} µg/m³ PM2.5). Minimal industrial emissions and healthy atmospheric circulation ensure optimal respiratory comfort.`,
+          healthAdvice: 'Ideal conditions for all outdoor sports, running, and fresh-air ventilation. No protective measures required.',
+          healthClass: 'clean'
+        };
+      } else if (score >= 6) {
+        return {
+          score: score,
+          badgeClass: 'score-green',
+          tag: 'Good / Moderate Air',
+          tagClass: 'tag-clean',
+          title: 'Acceptable Air Quality with Mild Urban Haze',
+          summary: `Atmospheric metrics reflect typical urban conditions with moderate particulate concentrations (${pm25} µg/m³ PM2.5). Light vehicular traffic contributes minor Nitrogen Dioxide levels, but overall exposure remains safe for the general public.`,
+          healthAdvice: 'Great for outdoor exercise and recreation. Exceptionally sensitive individuals should monitor prolonged heavy exertion.',
+          healthClass: 'clean'
+        };
+      } else if (score >= 4) {
+        return {
+          score: score,
+          badgeClass: 'score-amber',
+          tag: 'Degraded / Caution',
+          tagClass: 'tag-moderate',
+          title: 'Elevated Particulates & Vehicle Congestion',
+          summary: `Fine particulate exposure is elevated at ${pm25} µg/m³ PM2.5 with notable Nitrogen Dioxide (${no2} µg/m³) from urban traffic and localized industrial combustion. Air circulation is somewhat stagnant.`,
+          healthAdvice: 'Individuals with asthma, allergies, or respiratory conditions should limit prolonged outdoor cardio. Consider indoor workouts during peak traffic hours.',
+          healthClass: 'warning'
+        };
+      } else if (score >= 3) {
+        return {
+          score: score,
+          badgeClass: 'score-orange',
+          tag: 'Unhealthy Alert',
+          tagClass: 'tag-unhealthy',
+          title: 'Significant Industrial Emissions & Heavy Smog',
+          summary: `Particulate concentrations are significantly elevated (${pm25} µg/m³ PM2.5, ${pm10} µg/m³ PM10). Active combustion from nearby industrial parks, coal/energy stations, or heavy vehicle density creates smog accumulation.`,
+          healthAdvice: 'Wear a certified N95 particulate mask if commuting near major arterial roads. Keep windows closed and operate HEPA air purifiers indoors.',
+          healthClass: 'danger'
+        };
+      } else {
+        return {
+          score: score,
+          badgeClass: 'score-red',
+          tag: 'Severe / Hazardous',
+          tagClass: 'tag-hazardous',
+          title: 'Hazardous Particulate Trapping & Industrial Smog',
+          summary: `Dangerous particulate concentrations detected (${pm25} µg/m³ PM2.5, AQI ${aqi}). Severe air degradation caused by heavy industrial output, thermal inversion trapping, agricultural stubble burning, or dense metropolitan gridlock.`,
+          healthAdvice: 'Avoid outdoor exercise completely. Wear N95/FFP2 masks outdoors, keep all indoor spaces sealed with active filtration, and avoid peak highway corridors.',
+          healthClass: 'danger'
+        };
+      }
+    }
+
+    function updateMap(lat, lon, placeName, country, score, aqi) {
+      if (!map) return;
+      map.flyTo([lat, lon], 11, { duration: 1.2 });
+
+      if (currentMarker) {
+        map.removeLayer(currentMarker);
+      }
+
+      currentMarker = L.marker([lat, lon]).addTo(map);
+      currentMarker.bindPopup(`
+        <div style="font-family: var(--font-sans); padding: 4px;">
+          <strong style="font-size: 14px; color: #111827;">${placeName}, ${country}</strong><br/>
+          <span style="font-size: 12px; color: #4b5563;">Climate Score: <strong>${score}/10</strong> • AQI: <strong>${aqi}</strong></span>
+        </div>
+      `).openPopup();
+    }
+
+    function renderAnalysis(data) {
+      // Score pill & Meter
+      const pill = document.getElementById('score-pill');
+      const num = document.getElementById('score-num');
+      const meter = document.getElementById('score-meter-fill');
+      const placeLabel = document.getElementById('score-place-name');
+      const verdictLabel = document.getElementById('score-verdict-label');
+
+      if (num) num.textContent = data.score;
+      if (placeLabel) placeLabel.textContent = data.placeName;
+      if (verdictLabel) verdictLabel.textContent = data.verdictTitle;
+
+      if (meter) {
+        meter.style.width = `${data.score * 10}%`;
+        if (data.score >= 8) {
+          pill.style.background = '#22c55e';
+          meter.style.background = '#22c55e';
+        } else if (data.score >= 5) {
+          pill.style.background = '#eab308';
+          meter.style.background = '#eab308';
+        } else if (data.score >= 3) {
+          pill.style.background = '#f97316';
+          meter.style.background = '#f97316';
+        } else {
+          pill.style.background = '#ef4444';
+          meter.style.background = '#ef4444';
+        }
+      }
+
+      // Telemetry metrics
+      document.getElementById('val-pm25').textContent = `${data.pm25} µg/m³`;
+      document.getElementById('val-pm10').textContent = `${data.pm10} µg/m³`;
+      document.getElementById('val-no2').textContent = `${data.no2} µg/m³`;
+      document.getElementById('val-aqi').textContent = `${data.usAqi}`;
+
+      // Analysis card
+      const tag = document.getElementById('analysis-tag');
+      const title = document.getElementById('analysis-title');
+      const summaryText = document.getElementById('analysis-summary-text');
+
+      if (tag) {
+        tag.textContent = data.tag;
+        tag.className = `summary-tag ${data.tagClass}`;
+      }
+      if (title) title.textContent = `${data.placeName}: Score ${data.score}/10`;
+      if (summaryText) summaryText.textContent = data.verdictSummary;
+
+      // 4-Factor Breakdown
+      const indVal = document.getElementById('factor-industrial-val');
+      const indDesc = document.getElementById('factor-industrial-desc');
+      if (indVal) indVal.textContent = `SO₂: ${data.so2} µg/m³ • Dust: ${data.dust} µg/m³`;
+      if (indDesc) {
+        if (data.so2 > 20 || data.dust > 100) {
+          indDesc.textContent = `Elevated sulfur dioxide and mineral dust indicate high coal burning, heavy metallurgy, or arid particulate transport nearby.`;
+        } else {
+          indDesc.textContent = `Low sulfur dioxide (${data.so2} µg/m³) confirms minimal coal-fired combustion or heavy smelting stress in this immediate quadrant.`;
+        }
+      }
+
+      const trafVal = document.getElementById('factor-traffic-val');
+      const trafDesc = document.getElementById('factor-traffic-desc');
+      if (trafVal) trafVal.textContent = `NO₂: ${data.no2} µg/m³`;
+      if (trafDesc) {
+        if (data.no2 > 40) {
+          trafDesc.textContent = `High vehicular emissions from dense arterial roads, highway intersections, and diesel transport.`;
+        } else {
+          trafDesc.textContent = `Manageable vehicle density with low combustion emissions and healthy traffic dispersion.`;
+        }
+      }
+
+      const dustVal = document.getElementById('factor-dust-val');
+      const dustDesc = document.getElementById('factor-dust-desc');
+      if (dustVal) dustVal.textContent = `PM2.5: ${data.pm25} µg/m³ • PM10: ${data.pm10} µg/m³`;
+      if (dustDesc) {
+        if (data.pm25 > 35) {
+          dustDesc.textContent = `Fine respirable particulates exceed WHO thresholds (${data.pm25} µg/m³ vs 5 µg/m³ baseline), creating visible haze.`;
+        } else {
+          dustDesc.textContent = `Particulate count is within safe environmental bounds, promoting clear horizontal visibility.`;
+        }
+      }
+
+      const geoVal = document.getElementById('factor-geo-val');
+      const geoDesc = document.getElementById('factor-geo-desc');
+      if (geoVal) geoVal.textContent = `Ozone: ${data.ozone} µg/m³ • AQI: ${data.usAqi}`;
+      if (geoDesc) {
+        if (data.score >= 7) {
+          geoDesc.textContent = `Excellent air turnover driven by consistent wind patterns, sea breezes, or clean high-altitude ventilation.`;
+        } else {
+          geoDesc.textContent = `Stagnant air currents or local basin topography may restrict vertical thermal mixing, trapping pollutants near ground level.`;
+        }
+      }
+
+      // Health advice card
+      const healthCard = document.getElementById('health-advice-card');
+      const healthText = document.getElementById('health-advice-text');
+      if (healthCard && healthText) {
+        healthCard.className = `health-advice-card ${data.healthClass}`;
+        healthText.textContent = data.healthAdvice;
+      }
+    }
+  </script>
+</body>
+</html>
