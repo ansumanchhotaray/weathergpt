@@ -34,23 +34,25 @@ WeatherGPT has been restructured into a **full-bleed horizontal (landscape) view
 
 ## 📁 Updated File Reference
 
-All application files are located in `C:\Users\ansum\.gemini\antigravity\scratch\weathergpt\`:
+All files are located in `weathergpt`:
 
 | File | Description |
 |---|---|
-| [`index.html`](file:///C:/Users/ansum/.gemini/antigravity/scratch/weathergpt/index.html) | Full-bleed landscape dual-panel structure (Left atmospheric hero + Right chat workspace). |
-| [`style.css`](file:///C:/Users/ansum/.gemini/antigravity/scratch/weathergpt/style.css) | Landscape Flexbox CSS with strict peach/cream grid theme locks, minimalist sun & cloud artwork, and chat bubble styles. |
-| [`weatherData.js`](file:///C:/Users/ansum/.gemini/antigravity/scratch/weathergpt/weatherData.js) | Live Open-Meteo API pipeline + multi-variable AI Activity Reasoning Engine. |
-| [`app.js`](file:///C:/Users/ansum/.gemini/antigravity/scratch/weathergpt/app.js) | Left-right panel synchronization, active city context management, live telemetry updates, and Web Audio SFX. |
+| [`index.html`] | WeatherGPT homepage with navigation links to Climate Rating and Disaster Portal. |
+| [`disaster-portal.html`] | Dedicated Emergency Monitoring System with Leaflet map, NASA EONET events, and NDRRMA Nepal Flood pitch demo. |
+| [`climate-rating.html`] | Climate & Air Quality Rater with 1-10 scoring engine and Leaflet map. |
+| [`style.css`] | Core stylesheet with landscape layout and nav link styles. |
+| [`weatherData.js`] | Live Open-Meteo weather API pipeline + AI Activity Reasoning Engine. |
+| [`app.js`] | WeatherGPT homepage controller. |
 
 ---
 
 ## 🚀 How to Run & View
 
-Open [`index.html`](file:///C:/Users/ansum/.gemini/antigravity/scratch/weathergpt/index.html) in your browser, or run:
+Open [`index.html`] in your browser, or run:
 
 ```powershell
-cd C:\Users\ansum\.gemini\antigravity\scratch\weathergpt
+cd weathergpt
 python -m http.server 3000
 ```
 Then navigate to `http://localhost:3000`.
